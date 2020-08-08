@@ -13,6 +13,7 @@ import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -28,6 +29,8 @@ import org.json.JSONObject;
 import org.xml.sax.Parser;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
     private ListView vendingListView = null;
@@ -38,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
         //사용자 이름 출력 기능
         TextView idText = (TextView)findViewById(R.id.NameText);
         Intent intent = getIntent();
-        String UserId = intent.getStringExtra("userId");
+        final String UserId = intent.getStringExtra("userId");
         String _UserId = UserId + "님";
         SpannableStringBuilder s_User_Id = new SpannableStringBuilder(_UserId);
         s_User_Id.setSpan(new ForegroundColorSpan(Color.parseColor("#ff7f00")), 0, UserId.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -50,22 +53,28 @@ public class MainActivity extends AppCompatActivity {
 
         //자판기 데이터 파싱하기
         RequestQueue queue = Volley.newRequestQueue((this));
-        String url = "http://ec2-3-34-207-199.ap-northeast-2.compute.amazonaws.com/mobile/vending";
+        String url = "http://ec2-3-34-207-199.ap-northeast-2.compute.amazonaws.com/mobile/vending/read";
 
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.GET, url, null,
+        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, null,
                 new Response.Listener<JSONObject>() {
 
 
                     @Override
                     public void onResponse(JSONObject response) {
                         try {
-                            JSONArray jsonArray = response.getJSONArray("vending");
-                            for (int i = 0; i < jsonArray.length(); i++) {
-                                JSONObject vending = jsonArray.getJSONObject(i);
-                                VendingData vdata = new VendingData();
-                                vdata.Vending_name = vending.getString("vending_name");
-                                vdata.Vending_discription = vending.getString("vending_discription");
-                                VData.add(vdata);
+                            JSONArray jsonArray = response.getJSONArray("vendings");
+                            boolean success = response.getBoolean("success");
+                            if(success) {
+                                for (int i = 0; i < jsonArray.length(); i++) {
+                                    JSONObject vending = jsonArray.getJSONObject(i);
+                                    VendingData vdata = new VendingData();
+                                    vdata.Vending_name = vending.getString("name");
+                                    vdata.Vending_discription = vending.getString("discription");
+                                    VData.add(vdata);
+                                }
+                            }
+                            else{
+                                return;
                             }
                         } catch (JSONException e) {
                             e.printStackTrace();
@@ -77,7 +86,13 @@ public class MainActivity extends AppCompatActivity {
                 error.printStackTrace();
             }
 
-                });
+                }){
+            protected Map<String,String> getParams() throws AuthFailureError{
+                Map<String,String> params = new HashMap<String,String>();
+                params.put("userId",UserId);
+                return params;
+            }
+        };
         queue.add(request);
 
 
